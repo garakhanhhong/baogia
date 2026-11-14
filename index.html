@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dự toán sửa chữa</title>
+<title>Báo giá sửa chữa</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Báo giá">
@@ -62,11 +62,15 @@ html,body{overflow-x:hidden}
 input,select,textarea,button,details,summary{box-sizing:border-box!important;max-width:100%}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:38px;min-width:0;text-align:left}
 .g>div,.box>*{min-width:0}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.paper{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.info .lb{white-space:nowrap}
+.ds{margin-top:28px;font-size:16px;font-weight:bold;letter-spacing:1px}
 </style>
 </head>
 <body>
 <main>
-<h1>Dự toán sửa chữa</h1>
+<h1>Báo giá sửa chữa</h1>
 <div class="box"><h3>Thông tin phiếu và khách hàng</h3>
 <div class="g">
 <div><label>Kính gửi</label><input id="kg"></div>
@@ -215,7 +219,9 @@ async function exp(){
  mr.forEach(s=>{if(rr(s)[1]<=15)ws.mergeCells(s);});
  for(let i=1;i<=15;i++)cp(i,i);
  for(let c=1;c<=10;c++){const b=ts.getCell(14,c).border||{},b2=ts.getCell(15,c).border||{};ws.getCell(15,c).border=cl({left:b.left||b2.left,right:b.right||b2.right,top:b2.top,bottom:b2.bottom||b.bottom});}
- g('J14').value='Ghi chú';g('H12').value='(Year of mfg.)';
+ g('D2').value='BÁO GIÁ SỬA CHỮA';
+ const rt=a=>{const c=g(a),q=c.value,f=s=>s.replace(/estimation/gi,m=>m[0]=='E'?'Quotation':'quotation');if(q&&q.richText)c.value={richText:q.richText.map(x=>({font:x.font,text:f(x.text)}))};else if(typeof q=='string')c.value=f(q);};
+ rt('D3');rt('I3');g('J14').value='Ghi chú';g('H12').value='(Year of mfg.)';
  g('A1').value='Kính gửi: '+v('kg');
  const d0=v('ngay').split('-');g('F4').value=d0.length==3?`${d0[2]}/${d0[1]}/${d0[0]}`:'';
  g('I4').value=/^\d+$/.test(v('so'))?+v('so'):v('so');
@@ -243,6 +249,7 @@ async function exp(){
   g('I'+(tr+2)).value={formula:`I${tr}+I${tr+1}`,result:T.f};}
  g('C'+(73+d2)).value=words(T.f);
  if(!T.p){const b=ts.getCell('B76').value;if(b&&b.richText)g('B'+(76+d2)).value={richText:b.richText.map(x=>({font:cl(x.font),text:x.text.replace('đã bao gồm','chưa bao gồm').replace('included','does not include')}))};}
+ [...[76,77,78].map(n=>'B'+(n+d2))].forEach(rt);
  ['A8','A10','A12','D10','D12','H8','H10','H12','J14','J15'].forEach(a=>{const c=g(a);c.alignment={...cl(c.alignment||{}),shrinkToFit:true,wrapText:false};});
  const ims=ts.getImages();
  if(ims.length){ims.forEach(im=>{const md=wb.getImage(im.imageId);ws.addImage(out.addImage({buffer:md.buffer,extension:md.extension}),im.range);});}
@@ -266,18 +273,18 @@ async function saveBlob(blob,name,m){const file=new File([blob],name,{type:blob.
  if(!done){const u=URL.createObjectURL(file),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}
  return true;}
 function outName(){return ((v('fn2')||v('fn')||defName()).replace(/[\\/:*?"<>|]+/g,'').replace(/\.(xlsx|pdf)$/i,'')||'Du-toan').toUpperCase();}
-function paperHtml(){const T=totals(),e=esc,G=$('grp').value!='0';let num=0,b='';
+function paperHtml(sg){const T=totals(),e=esc,G=$('grp').value!='0';let num=0,b='';
  S.forEach((s,i)=>{const L=R[i].filter(x=>x.n.trim()),k=s.indexOf(' (');if(!L.length)return;
   if(G)b+=`<tr data-br class="sh"><td class="c">►</td><td colspan="4"><b><i>${e(s.slice(0,k))}</i></b> ${e(s.slice(k+1))}</td><td class="n">VND</td><td class="n"><b>${fmt(T.st[i])}</b></td><td></td></tr>`;
   L.forEach((x,n)=>{b+=`<tr data-br><td class="c">${String(G?n+1:++num).padStart(2,'0')}</td><td>${e(cap(x.n))}</td><td>${e(x.p)}</td><td class="c">${e(x.u)}</td><td class="c">${x.q}</td><td class="n">${fmt(x.r)}</td><td class="n">${fmt(x.q*x.r)}</td><td>${e(x.t)}</td></tr>`;});});
  const tot=(a,l,n)=>`<tr data-br class="tt"><td class="c">${a}</td><td colspan="4">${l}</td><td class="n">VND</td><td class="n">${fmt(n)}</td><td></td></tr>`;
  b+=tot('A.','Tổng cộng <i>(Total)</i>',T.t)+(T.p?tot('B.','Thuế VAT <i>(VAT Tax)</i> '+T.p+'%',T.vt)+tot('C.','Tổng tiền thanh toán <i>(Total payment)</i>',T.f):'');
  const d=v('ngay').split('-'),dt=d.length==3?`${d[2]}/${d[1]}/${d[0]}`:'',c=(l,en)=>`<td class="lb">${l}<small>${en}</small></td>`,val=(x,n)=>`<td${n?' colspan="'+n+'"':''} class="vl">${e(x)}</td>`;
- const n1=T.p?'Báo giá trên đã bao gồm thuế VAT. Báo giá có hiệu lực trong vòng 10 ngày kể từ ngày phát hành <i>(This estimation included VAT. Period of validity are 10 days from issued date).</i>':'Báo giá trên chưa bao gồm thuế VAT. Báo giá có hiệu lực trong vòng 10 ngày kể từ ngày phát hành <i>(This estimation does not include VAT. Period of validity are 10 days from issued date).</i>';
+ const n1=T.p?'Báo giá trên đã bao gồm thuế VAT. Báo giá có hiệu lực trong vòng 10 ngày kể từ ngày phát hành <i>(This quotation included VAT. Period of validity are 10 days from issued date).</i>':'Báo giá trên chưa bao gồm thuế VAT. Báo giá có hiệu lực trong vòng 10 ngày kể từ ngày phát hành <i>(This quotation does not include VAT. Period of validity are 10 days from issued date).</i>';
  return `<div class="paper"><div class="pk"><span>Kính gửi: ${e(v('kg'))}</span><span>BM: 04/DTSC-TPB</span></div><div class="fr">
-<div class="hdr"><div class="lg"><img alt="" src="data:image/jpeg;base64,${LOGO}"></div><div class="ttl"><h2>DỰ TOÁN SỬA CHỮA</h2><i>(Estimation)</i><div>Ngày <i>(Issue date)</i> ${dt}</div></div><div class="nb"><div class="a">Số <i>(Estimation No.)</i></div><div><b>${e(v('so'))}</b> /DTSC</div></div></div>
+<div class="hdr"><div class="lg"><img alt="" src="data:image/jpeg;base64,${LOGO}"></div><div class="ttl"><h2>BÁO GIÁ SỬA CHỮA</h2><i>(Quotation)</i><div>Ngày <i>(Issue date)</i> ${dt}</div></div><div class="nb"><div class="a">Số <i>(Quotation No.)</i></div><div><b>${e(v('so'))}</b> /DTSC</div></div></div>
 <div class="bar2">THÔNG TIN KHÁCH HÀNG <i>(CUSTOMER INFORMATION)</i></div>
-<table class="info"><colgroup><col style="width:13%"><col style="width:29%"><col style="width:10%"><col style="width:17%"><col style="width:12%"><col style="width:19%"></colgroup>
+<table class="info"><colgroup><col style="width:15%"><col style="width:27%"><col style="width:10%"><col style="width:17%"><col style="width:12%"><col style="width:19%"></colgroup>
 <tr>${c('Tên Khách hàng','(Customer name)')}${val(v('ten').toUpperCase(),3)}${c('Biển số','(Reg No.)')}${val(VU('bks'))}</tr>
 <tr>${c('Địa chỉ','(Address)')}${val(v('dc'))}${c('MST','(Tax code)')}${val(VU('mst'))}${c('Loại xe','(Model)')}${val(VU('loai'))}</tr>
 <tr>${c('Lái xe','(Driver)')}${val(VU('lx'))}${c('Điện thoại','(Tel)')}${val(VU('dt'))}${c('Năm SX','(Year of mfg.)')}${val(VU('nsx'))}</tr></table>
@@ -285,8 +292,8 @@ function paperHtml(){const T=totals(),e=esc,G=$('grp').value!='0';let num=0,b=''
 <table class="dt"><colgroup><col style="width:5%"><col style="width:35%"><col style="width:9%"><col style="width:7%"><col style="width:6%"><col style="width:13%"><col style="width:14%"><col style="width:11%"></colgroup>
 <thead><tr><th>TT<small>(No)</small></th><th>Hạng mục dịch vụ<small>(Service item or Issue name)</small></th><th>Mã PT<small>(Part No.)</small></th><th>ĐVT<small>(Unit)</small></th><th>SL<small>(Qty)</small></th><th>Đơn giá<small>(Price Unit)</small></th><th>Thành tiền<small>(Amount)</small></th><th>Ghi chú<small>(Note)</small></th></tr></thead><tbody>${b}</tbody></table>
 <div class="wd" data-br>Bằng chữ <i>(In word):</i> <b><i>${words(T.f)}</i></b></div>
-<div class="nt2" data-br><div>Ghi chú <i>(Note):</i></div><ul><li>${n1}</li><li>Những hư hỏng phát sinh trong quá trình sửa chữa, chúng tôi sẽ thông báo cho quý khách và không bao gồm trong báo giá này <i>(Other problems arise during in the repair, we will inform to you and they are not including in this estimation).</i></li><li>Chúng tôi sẽ chỉ tiến hành sửa chữa sau khi nhận được xác nhận đồng ý với báo giá này của quý khách <i>(We will perform the repair after you confirm this estimation to us).</i></li></ul></div>
-<table class="sg" data-br><tr><th colspan="2" class="rb">XÁC NHẬN ĐỒNG Ý BÁO GIÁ CỦA QUÝ KHÁCH HÀNG</th><th>CÔNG TY TNHH THIÊN PHÚ BÌNH</th></tr><tr><td>Công ty Bảo hiểm<small>(Insurer)</small></td><td class="rb">Khách hàng<small>(Customer)</small></td><td>Garage Khánh Hồng<small>(Khanh Hong Garage)</small></td></tr></table></div></div>`;}
+<div class="nt2" data-br><div>Ghi chú <i>(Note):</i></div><ul><li>${n1}</li><li>Những hư hỏng phát sinh trong quá trình sửa chữa, chúng tôi sẽ thông báo cho quý khách và không bao gồm trong báo giá này <i>(Other problems arise during in the repair, we will inform to you and they are not including in this quotation).</i></li><li>Chúng tôi sẽ chỉ tiến hành sửa chữa sau khi nhận được xác nhận đồng ý với báo giá này của quý khách <i>(We will perform the repair after you confirm this quotation to us).</i></li></ul></div>
+<table class="sg" data-br><tr><th colspan="2" class="rb">XÁC NHẬN ĐỒNG Ý BÁO GIÁ CỦA QUÝ KHÁCH HÀNG</th><th>CÔNG TY TNHH THIÊN PHÚ BÌNH</th></tr><tr><td>Công ty Bảo hiểm<small>(Insurer)</small></td><td class="rb">Khách hàng<small>(Customer)</small></td><td>Garage Khánh Hồng<small>(Khanh Hong Garage)</small>${sg?'<div class="ds">ĐÃ KÝ</div>':''}</td></tr></table></div></div>`;}
 function prev(){const T=totals(),e=esc,w=[];
  R.forEach(a=>a.forEach(x=>{const nm=x.n.trim();if(nm&&!x.r)w.push('“'+nm+'” chưa có đơn giá');else if(!nm&&(x.r||x.p||x.t))w.push('Có dòng chưa nhập tên hạng mục, dòng này sẽ không được in');}));
  if(!v('ten'))w.push('Chưa nhập tên khách hàng');if(!v('bks'))w.push('Chưa nhập biển số');if(!T.t)w.push('Chưa có hạng mục nào có thành tiền');
@@ -297,7 +304,7 @@ function loadLib(url,has){return has()?Promise.resolve():new Promise((ok,no)=>{c
 async function expPdf(){const m={set textContent(t){$('msg').textContent=t;$('pm').textContent=t;}};m.textContent='Đang tạo PDF...';let host=null;
  try{await loadLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',()=>window.html2canvas);
   await loadLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf);
-  host=document.createElement('div');host.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff';host.innerHTML=paperHtml();document.body.appendChild(host);
+  host=document.createElement('div');host.style.cssText='position:absolute;left:-10000px;top:0;width:794px;background:#fff';host.innerHTML=paperHtml(true);document.body.appendChild(host);
   const el=host.firstElementChild;await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode?i.decode().catch(()=>0):0));
   const W=el.offsetWidth,H=el.offsetHeight,base=el.getBoundingClientRect().top,brs=[...el.querySelectorAll('[data-br]')].map(n=>n.getBoundingClientRect().bottom-base).sort((a,b)=>a-b);
   const sc=Math.max(1,Math.min(2,Math.sqrt(14e6/(W*H)))),cv=await html2canvas(el,{scale:sc,backgroundColor:'#fff',logging:false});
