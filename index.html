@@ -72,6 +72,12 @@ textarea{resize:none;overflow:hidden;line-height:1.35}
 <div><label>Thuế VAT</label><select id="vat" onchange="calc()"><option value="0" selected>Không tính VAT (bỏ dòng thuế)</option><option value="8">Tính VAT 8%</option></select></div>
 <div><label>Tiêu đề nhóm</label><select id="grp"><option value="1" selected>Có (Phụ tùng, Đồng, Sơn...)</option><option value="0">Không tiêu đề nhóm</option></select></div>
 </div></div>
+<details class="box" open><summary style="font-weight:600;cursor:pointer">⚡ Nhập nhanh nhiều dòng</summary>
+<p class="hint" style="margin:8px 0">Mỗi dòng một hạng mục, giá để cuối dòng (700 = 700.000, 600k = 600.000, 1,2tr = 1.200.000, x2 = số lượng 2). Dòng không ghi giá sẽ tự điền giá nếu hạng mục cùng tên đã có giá. Có thể dùng micro trên bàn phím iPhone để đọc.</p>
+<select id="bsec"><option value="auto" selected>Tự chia nhóm (sơn, gò/hàn/phục hồi, còn lại là phụ tùng)</option><option value="0">Phụ tùng thay thế</option><option value="3">Đồng</option><option value="6">Sơn</option><option value="7">Nội dung khác</option><option value="1">Máy - Gầm</option><option value="2">Điện - Điện lạnh</option><option value="4">Chassi</option><option value="5">Nội thất</option></select>
+<textarea id="bulk" rows="6" style="margin-top:8px;overflow:auto;resize:vertical" placeholder="sơn cửa trước t 700&#10;sơn cửa sau p&#10;sơn tai xe t 600k&#10;gò cản trước 400&#10;gương chiếu hậu p 1.200.000&#10;công thay thế 150"></textarea>
+<button class="go" style="width:100%;margin-top:8px" onclick="Bulk()">Thêm vào phiếu</button>
+<p class="hint" id="bmsg" style="margin:8px 0 0"></p></details>
 <div id="secs"></div>
 </main>
 <div id="pv" hidden><div class="pvh"><button class="x" onclick="$('pv').hidden=true">← Quay lại chỉnh sửa</button><input id="fn2" placeholder="Tên file (để trống = tự đặt)" oninput="fnEdited=true;$('fn').value=this.value" style="flex:1 1 150px"><button class="go" onclick="exp()">Xuất Excel</button><span id="pm"></span></div><div id="pvb"></div></div>
@@ -127,6 +133,32 @@ function draw(){
 function Add(i){ask=-1;R[i].push(blank());draw();}
 function unlink(x){const k=R[6].findIndex(y=>y.id===x.lk&&!y.tch);if(k>=0)R[6].splice(k,1);}
 function Del(i,j){ask=-1;if(i==3&&R[3][j].lk)unlink(R[3][j]);R[i].splice(j,1);draw();}
+let bulkMode=false;
+function parsePrice(t){t=String(t).toLowerCase().replace(/,/g,'.');let m;
+ if(m=t.match(/^(\d+(?:\.\d+)?)(k|nghin|ng)$/))return Math.round(parseFloat(m[1])*1e3);
+ if(m=t.match(/^(\d+(?:\.\d+)?)(tr|m|trieu|triệu)$/))return Math.round(parseFloat(m[1])*1e6);
+ if(m=t.match(/^(\d+)(?:tr|m)(\d{1,3})$/))return Math.round(parseFloat(m[1]+'.'+m[2])*1e6);
+ if(/^\d{1,3}(\.\d{3})+$/.test(t)){const n=+t.replace(/\./g,'');return n<10000?n*1000:n;}
+ if(/^\d+$/.test(t)){const n=+t;return n<10000?n*1000:n;}
+ return null;}
+function secOf(name){const u=ST(name);return /^SON\b/.test(u)?6:/^(GO|HAN|PHUC HOI|NAN)\b/.test(u)?3:0;}
+function Bulk(){const sel=$('bsec').value,lines=$('bulk').value.split(/\r?\n/).map(s=>s.replace(/^\s*(?:\d+[.)]\s+|[-•*]\s+)/,'').trim()).filter(Boolean);
+ let added=0,upd=0,np=0;const touched=new Set();bulkMode=true;
+ try{lines.forEach(line=>{const tk=line.split(/\s+/);let price=null,qty=1;
+  for(let k=tk.length-1;k>=0;k--)if(/^[x×*]\d+$/i.test(tk[k])){qty=+tk[k].slice(1)||1;tk.splice(k,1);}
+  if(tk.length>1){const p=parsePrice(tk[tk.length-1]);if(p!=null){price=p;tk.pop();}}
+  if(!tk.length)return;
+  const name=cap(tk.join(' ').replace(/(^|\s)([tpTP])(?=\s|$)/g,(m,a,b)=>a+b.toUpperCase())),i=sel=='auto'?secOf(name):+sel;
+  off[i]=false;
+  if(!touched.has(i)){R[i]=R[i].filter(x=>x.n.trim()||x.p||x.u||x.t||x.r);touched.add(i);}
+  const ex=R[i].find(x=>fk(x.n)==fk(name));
+  if(ex){if(price!=null){ex.r=price;ex.auto=false;upd++;}if(qty!=1)ex.q=qty;return;}
+  const y=blank();y.n=name;y.q=qty;if(i==6)y.tch=true;R[i].push(y);const j=R[i].length-1;
+  if(price!=null)y.r=price;else{autoPrice(i,j);if(!y.r)np++;}
+  added++;if(i==3)Sync(3,j);});}
+ finally{bulkMode=false;}
+ $('bulk').value='';draw();
+ $('bmsg').textContent=lines.length?'Đã thêm '+added+' dòng'+(upd?', cập nhật giá '+upd+' dòng trùng tên':'')+(np?'. Có '+np+' dòng chưa có giá, hãy nhập thêm ở bên dưới.':'.'):'Chưa có dòng nào để thêm.';}
 const AUTO=[0,6],POS=['tài','phụ','trái','phải','t','p','trước','truoc','sau'];
 function nk(s){const tk=String(s).normalize('NFC').toLowerCase().replace(/[()]/g,' ').split(/\s+/).filter(w=>w&&!POS.includes(w));
  return tk.join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toUpperCase().replace(/\b(TAI XE|HONG)\b/g,'TAI/HONG').replace(/\s+/g,' ').trim();}
@@ -138,7 +170,7 @@ function autoPrice(i,j){const x=R[i][j];if(!AUTO.includes(i)||!(x.auto||!x.r))re
 const fk=s=>String(s).normalize('NFC').toLowerCase().replace(/\s+/g,' ').trim();
 function paintName(n){n=String(n).normalize('NFC').trim();const m=n.match(/^(gò|go|hàn|han|phục hồi|phuc hoi)\s+/i);if(!m)return null;const rest=n.slice(m[0].length).trim();return rest?cap('sơn '+rest):null;}
 function paintAdd(name){off[6]=false;const y=blank();y.n=name;R[6].push(y);const j=R[6].length-1;autoPrice(6,j);
- const box=$('rows6');if(box&&box.insertAdjacentHTML&&vis(6)){box.insertAdjacentHTML('beforeend',rowHtml(6,j,y));const e=$(`n6_${j}`);if(e)ag(e);calc();}else draw();return y;}
+ const box=$('rows6');if(bulkMode){}else if(box&&box.insertAdjacentHTML&&vis(6)){box.insertAdjacentHTML('beforeend',rowHtml(6,j,y));const e=$(`n6_${j}`);if(e)ag(e);calc();}else draw();return y;}
 function Sync(i,j){if(i!=3)return;const x=R[3][j],want=paintName(x.n),lin=x.lk?R[6].find(y=>y.id===x.lk):null;
  if(want){
   if(lin){if(!lin.tch&&fk(lin.n)!=fk(want)){lin.n=want;const k=R[6].indexOf(lin),e=$(`n6_${k}`);if(e){e.value=want;ag(e);}autoPrice(6,k);}}
