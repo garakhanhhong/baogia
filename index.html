@@ -36,6 +36,7 @@ output{flex:1 1 90px;text-align:right;font-weight:600}
 .hint{color:var(--mu);font-size:13px;margin:0 0 10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;font-size:13px;color:var(--mu)}.chip{border:1px dashed var(--ac);background:none;color:var(--ac);border-radius:14px;padding:5px 10px;font:inherit}
 .x.ask{color:#b3261e;border-color:#b3261e}
+#scanmsg{font-size:13px;color:var(--mu);margin:6px 0 10px}#scanmsg pre{white-space:pre-wrap;font-size:12px;max-height:200px;overflow:auto}
 #ten,#bks,#loai,#nsx,#mst,#lx,#dt,#fn,#fn2{text-transform:uppercase}
 textarea{resize:none;overflow:hidden;line-height:1.35}
 .alt{background:none;color:var(--ac);border:1px solid var(--ac)}
@@ -55,6 +56,7 @@ textarea{resize:none;overflow:hidden;line-height:1.35}
 <h1>Dự toán sửa chữa</h1>
 <p class="sub">Nhập thông tin, bấm “Xuất Excel” để tải file theo mẫu BM: 04/DTSC-TPB.</p>
 <div class="box"><h3>Thông tin phiếu và khách hàng</h3>
+<input type="file" id="scan" accept="image/*" hidden onchange="scanDoc(this)"><button class="add" onclick="$('scan').click()">📷 Quét giấy tờ (bảo hiểm / đăng ký xe) để tự điền</button><div id="scanmsg"></div>
 <div class="g">
 <div><label>Kính gửi</label><input id="kg"></div>
 <div><label>Số phiếu</label><input id="so"></div>
@@ -214,6 +216,43 @@ async function exp(){
 }
 let fnEdited=false;function defName(){const d=v('ngay').split('-'),dm=d.length==3?d[2]+'-'+d[1]:'',b=VU('bks').replace(/[^A-Z0-9-]+/g,'');return [b,dm].filter(Boolean).join('-')||'DU-TOAN';}
 function autoFn(){if(fnEdited)return;const s=defName();$('fn').value=s;$('fn2').value=s;}
+const ST=s=>String(s).normalize('NFC').split('').map(c=>c.normalize('NFD').replace(/[\u0300-\u036f]/g,'')).join('').replace(/đ/g,'d').replace(/Đ/g,'D').toUpperCase();
+function plate(raw){const s=ST(raw).replace(/[^A-Z0-9 .\-]/g,'').trim(),M={O:'0',Q:'0',I:'1',L:'1',B:'8',S:'5',Z:'2'},fx=t=>t.replace(/[OQILBSZ]/g,c=>M[c]);
+ let m=s.match(/^([0-9A-Z]{2})\s*-?\s*([A-Z]{1,2}\d?)\s*[-. ]\s*([0-9A-Z]{3}[. -]?[0-9A-Z]{2}|[0-9A-Z]{4,5})/);
+ if(!m)m=s.match(/^([0-9A-Z]{2})([A-Z]{1,2})([0-9A-Z]{4,5})/);
+ if(!m)return null;const d=fx(m[3]).replace(/[^0-9]/g,'');if(d.length<4||d.length>5)return null;return fx(m[1])+m[2]+'-'+d;}
+function parseDoc(text){
+ const L=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),U=L.map(ST),
+  clean=v=>String(v).replace(/^[\s:;\-|\/]+/,'').replace(/[|_]+/g,' ').replace(/\s+/g,' ').trim(),
+  val=(re,from=0,to=L.length)=>{for(let i=from;i<to;i++){const m=U[i].match(re);if(m)return{i,v:clean(L[i].normalize('NFC').slice(m.index+m[0].length).replace(/^\s*(?:\([^)]*\)|\/[^:;]*)?\s*[:;]?/,''))};}return null;},
+  out={},lbl=/^[^A-Z]{0,4}(SO\s|BIEN|NHAN|NAM\s|TRONG|MUC|THOI|NGUOI|MAU|LOAI|TEN\s)/;
+ const n=val(/^[^A-Z]{0,4}(?:TEN\s*)?CHU\s*(?:XE|SO\s*HUU)/);if(n&&n.v)out.ten=n.v;
+ if(n){const a=val(/^[^A-Z]{0,4}DIA\s*CHI/,n.i+1,n.i+5);if(a&&a.v){let v=a.v;const nx=L[a.i+1];if(nx&&!/[:;]/.test(nx)&&!lbl.test(U[a.i+1])&&nx.length>3)v+=' '+clean(nx);out.dc=v;}}
+ const pl=val(/^[^A-Z]{0,4}(?:SO\s*)?BIEN\s*(?:KIEM\s*SOAT|SO(?:\s*DANG\s*KY)?)/);let bk=pl&&plate(pl.v);
+ if(!bk)for(const l of L){if(/\b\d{2}\s*[A-Z]{1,2}\d?\s*[-. ]?\s*\d{3,5}/.test(ST(l))){bk=plate(l.replace(/^.*?(?=\d{2}\s*[A-Za-z])/,''));if(bk)break;}}
+ if(bk)out.bks=bk;
+ const br=val(/^[^A-Z]{0,4}NHAN\s*HIEU(?:\s*XE)?/),md=val(/^[^A-Z]{0,4}SO\s*LOAI/);
+ if(br&&br.v)out.loai=br.v+(md&&md.v&&!ST(br.v).includes(ST(md.v))?' '+md.v:'');else if(md&&md.v)out.loai=md.v;
+ for(let i=0;i<L.length;i++){const m=U[i].match(/NAM\s*SAN\s*XUAT/);if(m){const y=U[i].slice(m.index+m[0].length).match(/((?:19|20)\d{2})/);if(y){out.nsx=y[1];break;}}}
+ return out;}
+const FIELDS={ten:'Tên',bks:'Biển số',loai:'Loại xe',nsx:'Năm SX',dc:'Địa chỉ'},LANG='https://cdn.jsdelivr.net/npm/@tesseract.js-data/vie/4.0.0_best_int';
+let tess=null;
+function loadTess(){return tess||(tess=new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=()=>{tess=null;no(new Error('load'));};document.head.appendChild(s);}));}
+async function prep(file){const bm=await createImageBitmap(file),k=Math.min(1,2200/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+ const x=c.getContext('2d');x.drawImage(bm,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height),p=d.data;let lo=255,hi=0;
+ for(let i=0;i<p.length;i+=4){const g=p[i]*.3+p[i+1]*.59+p[i+2]*.11;p[i]=p[i+1]=p[i+2]=g;if(g<lo)lo=g;if(g>hi)hi=g;}
+ const s=255/Math.max(hi-lo,1);for(let i=0;i<p.length;i+=4){p[i]=p[i+1]=p[i+2]=Math.min(255,Math.max(0,(p[i]-lo)*s));}
+ x.putImageData(d,0,0);return new Promise(r=>c.toBlob(r,'image/png'));}
+function fillDoc(o){const ok=[],miss=[];for(const k in FIELDS){if(o[k]){$(k).value=o[k];$(k).classList.add('auto');ok.push(FIELDS[k]);}else miss.push(FIELDS[k]);}autoFn();return{ok,miss};}
+async function scanDoc(inp){const f=inp.files&&inp.files[0];if(!f)return;const m=$('scanmsg');m.textContent='Đang chuẩn bị ảnh...';
+ try{try{await loadTess();}catch(e){throw new Error('Không tải được bộ đọc chữ. Chức năng quét chỉ chạy trên bản website, không chạy trong trang Claude, và cần có mạng.');}
+  const blob=await prep(f),T={'loading tesseract core':'Đang tải bộ đọc chữ','loading language traineddata':'Đang tải dữ liệu tiếng Việt (lần đầu hơi lâu)','recognizing text':'Đang đọc chữ'};
+  const r=await Tesseract.recognize(blob,'vie',{langPath:LANG,logger:g=>{if(g.status&&T[g.status])m.textContent=T[g.status]+(g.progress?' '+Math.round(g.progress*100)+'%':'');}});
+  const o=parseDoc(r.data.text),s=fillDoc(o);
+  m.innerHTML=(s.ok.length?'Đã điền: <b>'+s.ok.join(', ')+'</b> (ô có viền xanh). ':'Không đọc được thông tin nào. ')+(s.miss.length?'Chưa đọc được: '+s.miss.join(', ')+'. ':'')+'Hãy kiểm tra lại từng ô trước khi xuất phiếu.<details><summary>Xem chữ máy đã đọc</summary><pre>'+esc(r.data.text)+'</pre></details>';
+ }catch(e){m.textContent=(e&&e.message)||'Không quét được ảnh này.';}
+ inp.value='';}
+['ten','bks','loai','nsx','dc'].forEach(id=>$(id).addEventListener('input',()=>$(id).classList.remove('auto')));
 function prev(){
  const T=totals(),e=esc,w=[];
  R.forEach(a=>a.forEach(x=>{const nm=x.n.trim();if(nm&&!x.r)w.push('“'+nm+'” chưa có đơn giá');else if(!nm&&(x.r||x.p||x.t))w.push('Có dòng chưa nhập tên hạng mục, dòng này sẽ không được in');}));
