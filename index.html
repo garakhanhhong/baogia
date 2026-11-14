@@ -68,6 +68,7 @@ textarea{resize:none;overflow:hidden;line-height:1.35}
 <div><label>Lái xe</label><input id="lx"></div>
 <div><label>Điện thoại</label><input id="dt" inputmode="tel"></div>
 <div><label>Thuế VAT</label><select id="vat" onchange="calc()"><option value="0" selected>Không tính VAT (bỏ dòng thuế)</option><option value="8">Tính VAT 8%</option></select></div>
+<div><label>Tiêu đề nhóm</label><select id="grp"><option value="1" selected>Có (Phụ tùng, Đồng, Sơn...)</option><option value="0">Không tiêu đề nhóm</option></select></div>
 </div></div>
 <div id="secs"></div>
 </main>
@@ -172,14 +173,15 @@ async function exp(){
  g('C7').value=VU('ten');g('I7').value=VU('bks');g('C9').value=v('dc');g('E9').value=VU('mst');g('I9').value=VU('loai');
  g('C11').value=VU('lx');g('E11').value=VU('dt');g('I11').value=VU('nsx');
  const wl=(t,w)=>{let n=1,c=0;String(t).split(/\s+/).filter(Boolean).forEach(q=>{if(c&&c+1+q.length>w){n++;c=q.length;}else c+=(c?1:0)+q.length;});return n;};
+ const G=$('grp').value!='0',its=[];let num=0;
  let r=16;const hs=[],t16=(ts.getCell('B16').value||{}).richText;
  S.forEach((s,i)=>{const L=R[i].filter(x=>x.n.trim());if(!L.length)return;
-  const fst=!hs.length;hs.push(r);ws.mergeCells(`B${r}:G${r}`);cp(fst?16:22,r);const k=s.indexOf(' (');
+  if(G){const fst=!hs.length;hs.push(r);ws.mergeCells(`B${r}:G${r}`);cp(fst?16:22,r);const k=s.indexOf(' (');
   if(t16&&t16.length>1)g('B'+r).value={richText:[{font:cl(t16[0].font),text:s.slice(0,k)+' '},{font:cl(t16[1].font),text:s.slice(k+1)}]};else g('B'+r).value=s;
-  g('I'+r).value={formula:`SUM(I${r+1}:I${r+L.length})`,result:T.st[i]};r++;
-  L.forEach((x,n)=>{ws.mergeCells(`B${r}:D${r}`);cp(17,r);g('A'+r).value=n+1;g('B'+r).value=cap(x.n);g('E'+r).value=x.p;g('F'+r).value=x.u;
+  g('I'+r).value={formula:`SUM(I${r+1}:I${r+L.length})`,result:T.st[i]};r++;}
+  L.forEach((x,n)=>{ws.mergeCells(`B${r}:D${r}`);cp(17,r);g('A'+r).value=G?n+1:++num;g('B'+r).value=cap(x.n);g('E'+r).value=x.p;g('F'+r).value=x.u;
    g('G'+r).value=x.q;g('H'+r).value=x.r;g('H'+r).alignment={...cl(g('H'+r).alignment||{}),horizontal:'right'};
-   g('I'+r).value={formula:`G${r}*H${r}`,result:x.q*x.r};g('J'+r).value=x.t;for(const c of 'ABCDEFGHIJ'){const q=g(c+r);q.alignment={...cl(q.alignment||{}),vertical:'middle',...('BEFJ'.includes(c)?{wrapText:true}:{})};}
+   g('I'+r).value={formula:`G${r}*H${r}`,result:x.q*x.r};g('J'+r).value=x.t;its.push(r);g('J'+r).font={...cl(g('J'+r).font||{}),color:{argb:'FF000000'}};for(const c of 'ABCDEFGHIJ'){const q=g(c+r);q.alignment={...cl(q.alignment||{}),vertical:'middle',...('BEFJ'.includes(c)?{wrapText:true}:{})};}
    const nl=Math.max(wl(cap(x.n),46),wl(x.p,12),wl(x.u,6),wl(x.t,8));if(nl>1)ws.getRow(r).height=4.5+12*nl;r++;});
  });
  ws.mergeCells(`B${r}:D${r}`);cp(69,r);r++;
@@ -187,7 +189,7 @@ async function exp(){
  const d2=T.p?d:d-2;
  mr.forEach(s=>{const f=rr(s)[0];if(f<70||(!T.p&&(f==71||f==72)))return;const dd=f<=72?d:d2;ws.mergeCells(s.replace(/\d+/g,n=>+n+dd));});
  for(let i=70;i<=91;i++){if(!T.p&&(i==71||i==72))continue;cp(i,i+(i<=72?d:d2));}
- g('I'+tr).value={formula:hs.length?hs.map(h=>'I'+h).join('+'):'0',result:T.t};
+ g('I'+tr).value={formula:G?(hs.length?hs.map(h=>'I'+h).join('+'):'0'):(its.length?`SUM(I${its[0]}:I${its[its.length-1]})`:'0'),result:T.t};
  if(T.p){g('E'+(tr+1)).value=T.p/100;g('I'+(tr+1)).value={formula:`E${tr+1}*I${tr}`,result:T.vt};
   g('I'+(tr+2)).value={formula:`I${tr}+I${tr+1}`,result:T.f};}
  g('C'+(73+d2)).value=words(T.f);
@@ -217,9 +219,10 @@ function prev(){
  R.forEach(a=>a.forEach(x=>{const nm=x.n.trim();if(nm&&!x.r)w.push('“'+nm+'” chưa có đơn giá');else if(!nm&&(x.r||x.p||x.t))w.push('Có dòng chưa nhập tên hạng mục, dòng này sẽ không được in');}));
  if(!v('ten'))w.push('Chưa nhập tên khách hàng');if(!v('bks'))w.push('Chưa nhập biển số');if(!T.t)w.push('Chưa có hạng mục nào có thành tiền');
  let b='';
+ const G=$('grp').value!='0';let num=0;
  S.forEach((s,i)=>{const L=R[i].filter(x=>x.n.trim()),k=s.indexOf(' (');if(!L.length)return;
-  b+=`<tr class="sh"><td>►</td><td colspan="4"><b><i>${e(s.slice(0,k))}</i></b> ${e(s.slice(k+1))}</td><td class="n">VND</td><td class="n"><b>${fmt(T.st[i])}</b></td><td></td></tr>`;
-  L.forEach((x,n)=>{b+=`<tr><td>${String(n+1).padStart(2,'0')}</td><td>${e(cap(x.n))}</td><td>${e(x.p)}</td><td>${e(x.u)}</td><td class="c">${x.q}</td><td class="n">${fmt(x.r)}</td><td class="n">${fmt(x.q*x.r)}</td><td>${e(x.t)}</td></tr>`;});});
+  if(G)b+=`<tr class="sh"><td>►</td><td colspan="4"><b><i>${e(s.slice(0,k))}</i></b> ${e(s.slice(k+1))}</td><td class="n">VND</td><td class="n"><b>${fmt(T.st[i])}</b></td><td></td></tr>`;
+  L.forEach((x,n)=>{b+=`<tr><td>${String(G?n+1:++num).padStart(2,'0')}</td><td>${e(cap(x.n))}</td><td>${e(x.p)}</td><td>${e(x.u)}</td><td class="c">${x.q}</td><td class="n">${fmt(x.r)}</td><td class="n">${fmt(x.q*x.r)}</td><td>${e(x.t)}</td></tr>`;});});
  const tot=(a,l,n)=>`<tr><td><b>${a}</b></td><td colspan="4"><b>${l}</b></td><td class="n">VND</td><td class="n"><b>${fmt(n)}</b></td><td></td></tr>`;
  b+=tot('A.','Tổng cộng (Total)',T.t)+(T.p?tot('B.','Thuế VAT (VAT Tax) '+T.p+'%',T.vt)+tot('C.','Tổng tiền thanh toán (Total payment)',T.f):'');
  const d=v('ngay').split('-'),dt=d.length==3?`${d[2]}/${d[1]}/${d[0]}`:'',f=(l,x)=>`<div><small>${l}</small><b>${e(x)}</b></div>`;
