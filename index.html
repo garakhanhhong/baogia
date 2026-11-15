@@ -68,7 +68,8 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-heigh
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .paper{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .info .lb{white-space:nowrap}
-.ds{margin-top:28px;font-size:16px;font-weight:bold;letter-spacing:1px}
+.ds{margin-top:10px;font-size:16px;font-weight:bold;letter-spacing:1px}
+.ck{width:13px;height:25px;border:solid #16a34a;border-width:0 6px 6px 0;transform:rotate(45deg);margin:0 auto 10px}
 @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 section.new{animation:pop .28s ease both}
 </style>
@@ -299,7 +300,7 @@ function paperHtml(sg){const T=totals(),e=esc,G=$('grp').value!='0';let num=0,b=
 <thead><tr><th>TT<small>(No)</small></th><th>Hạng mục dịch vụ<small>(Service item or Issue name)</small></th><th>Mã PT<small>(Part No.)</small></th><th>ĐVT<small>(Unit)</small></th><th>SL<small>(Qty)</small></th><th>Đơn giá<small>(Price Unit)</small></th><th>Thành tiền<small>(Amount)</small></th><th>Ghi chú<small>(Note)</small></th></tr></thead><tbody>${b}</tbody></table>
 <div class="wd" data-br>Bằng chữ <i>(In word):</i> <b><i>${words(T.f)}</i></b></div>
 <div class="nt2" data-br><div>Ghi chú <i>(Note):</i></div><ul><li>${n1}</li><li>Những hư hỏng phát sinh trong quá trình sửa chữa, chúng tôi sẽ thông báo cho quý khách và không bao gồm trong báo giá này <i>(Other problems arise during in the repair, we will inform to you and they are not including in this quotation).</i></li><li>Chúng tôi sẽ chỉ tiến hành sửa chữa sau khi nhận được xác nhận đồng ý với báo giá này của quý khách <i>(We will perform the repair after you confirm this quotation to us).</i></li></ul></div>
-<table class="sg" data-br><tr><th colspan="2" class="rb">XÁC NHẬN ĐỒNG Ý BÁO GIÁ CỦA QUÝ KHÁCH HÀNG</th><th>CÔNG TY TNHH THIÊN PHÚ BÌNH</th></tr><tr><td>Công ty Bảo hiểm<small>(Insurer)</small></td><td class="rb">Khách hàng<small>(Customer)</small></td><td>Garage Khánh Hồng<small>(Khanh Hong Garage)</small>${sg?'<div class="ds">ĐÃ KÝ</div>':''}</td></tr></table></div></div>`;}
+<table class="sg" data-br><tr><th colspan="2" class="rb">XÁC NHẬN ĐỒNG Ý BÁO GIÁ CỦA QUÝ KHÁCH HÀNG</th><th>CÔNG TY TNHH THIÊN PHÚ BÌNH</th></tr><tr><td>Công ty Bảo hiểm<small>(Insurer)</small></td><td class="rb">Khách hàng<small>(Customer)</small></td><td>Garage Khánh Hồng<small>(Khanh Hong Garage)</small>${sg?'<div class="ds"><div class="ck"></div>ĐÃ KÝ</div>':''}</td></tr></table></div></div>`;}
 function prev(){const T=totals(),e=esc,w=[];
  R.forEach(a=>a.forEach(x=>{const nm=x.n.trim();if(nm&&!x.r)w.push('“'+nm+'” chưa có đơn giá');else if(!nm&&(x.r||x.p||x.t))w.push('Có dòng chưa nhập tên hạng mục, dòng này sẽ không được in');}));
  if(!v('ten'))w.push('Chưa nhập tên khách hàng');if(!v('bks'))w.push('Chưa nhập biển số');if(!T.t)w.push('Chưa có hạng mục nào có thành tiền');
