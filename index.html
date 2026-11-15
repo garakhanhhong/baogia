@@ -57,7 +57,10 @@ textarea{resize:none;overflow:hidden;line-height:1.35}
 .wd{padding:6px;border-bottom:1px solid #000}.nt2{padding:6px 8px;border-bottom:2px solid #000}.nt2 ul{margin:4px 0 0;padding-left:16px}.nt2 li{margin-bottom:4px;text-align:justify}
 .sg th{padding:5px;text-align:center}.sg td{height:110px;vertical-align:top;text-align:center;padding:5px}.sg small{display:block;font-weight:normal;font-style:italic}.sg .rb{border-right:1px solid #000}
 .dh{flex:0 0 auto;padding:7px 10px;border:1px solid var(--bd);border-radius:7px;color:var(--mu);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;line-height:1.2}
-.row.drag{opacity:.65;background:var(--bg);outline:2px solid var(--ac)}
+.row{transition:box-shadow .15s ease}
+.row.drag{background:var(--card);border-radius:12px;padding:8px 10px;box-shadow:0 14px 30px rgba(0,0,0,.42),0 0 0 2px var(--ac);transform:scale(1.02);opacity:.97;pointer-events:none}
+.row.drag .dh{color:var(--ac);border-color:var(--ac);pointer-events:auto}
+.ph{border:2px dashed var(--ac);border-radius:12px;background:rgba(110,168,254,.10);margin:4px 0}
 html,body{overflow-x:hidden}
 input,select,textarea,button,details,summary{box-sizing:border-box!important;max-width:100%}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:38px;min-width:0;text-align:left}
@@ -66,6 +69,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .paper{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .info .lb{white-space:nowrap}
 .ds{margin-top:28px;font-size:16px;font-weight:bold;letter-spacing:1px}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+section.new{animation:pop .28s ease both}
 </style>
 </head>
 <body>
@@ -140,10 +145,11 @@ function rowHtml(i,j,x){return `<div class="row" data-j="${j}"><textarea class="
  <output id="a${i}_${j}"></output>
  <input class="nt" placeholder="Ghi chú" value="${esc(x.t)}" oninput="U(${i},${j},'t',this.value)">
  <span class="dh" onpointerdown="DragStart(event,${i})" aria-label="Kéo để đổi vị trí">⠿</span><button class="x" onclick="Del(${i},${j})" aria-label="Xóa dòng">✕</button></div>`;}
+let seenSec=new Set();
 function draw(){
- $('secs').innerHTML=S.map((s,i)=>!vis(i)?'':`<section><h3><span>${s}</span><span style="display:flex;gap:8px;align-items:center"><b id="st${i}"></b><button class="x${ask===i?' ask':''}" onclick="Off(${i})" aria-label="Tắt phần này">${ask===i?'Xóa '+cnt(i)+' dòng?':'✕'}</button></span></h3><div id="rows${i}">`+R[i].map((x,j)=>rowHtml(i,j,x)).join('')
+ $('secs').innerHTML=S.map((s,i)=>!vis(i)?'':`<section${seenSec.has(i)?'':' class="new"'}><h3><span>${s}</span><span style="display:flex;gap:8px;align-items:center"><b id="st${i}"></b><button class="x${ask===i?' ask':''}" onclick="Off(${i})" aria-label="Tắt phần này">${ask===i?'Xóa '+cnt(i)+' dòng?':'✕'}</button></span></h3><div id="rows${i}">`+R[i].map((x,j)=>rowHtml(i,j,x)).join('')
  +`</div><button class="add" onclick="Add(${i})">+ Thêm dòng</button></section>`).join('');
- if(document.querySelectorAll)document.querySelectorAll('#secs textarea.nm').forEach(ag);calc();}
+ if(document.querySelectorAll)document.querySelectorAll('#secs textarea.nm').forEach(ag);seenSec=new Set(S.map((s,i)=>i).filter(vis));calc();}
 function Add(i){ask=-1;R[i].push(blank());draw();}
 function unlink(x){const k=R[6].findIndex(y=>y.id===x.lk&&!y.tch);if(k>=0)R[6].splice(k,1);}
 function Del(i,j){ask=-1;if(i==3&&R[3][j].lk)unlink(R[3][j]);R[i].splice(j,1);draw();}
@@ -315,15 +321,26 @@ async function expPdf(){const m={set textContent(t){$('msg').textContent=t;$('pm
   if(await saveBlob(pdf.output('blob'),outName()+'.pdf',m))m.textContent='Đã xuất file PDF.';
  }catch(e){m.textContent=e&&e.code=='declined'?'Đã hủy việc lưu file.':'Chưa tạo được PDF: '+((e&&e.message)||e);}
  finally{if(host)host.remove();}}
-function DragStart(e,i){e.preventDefault();const h=e.currentTarget,row=h.closest('.row'),box=row.parentNode;row.classList.add('drag');
+let dragging=false;
+function DragStart(e,i){if(dragging)return;e.preventDefault();dragging=true;
+ const h=e.currentTarget,row=h.closest('.row'),box=row.parentNode,r0=row.getBoundingClientRect(),grab=e.clientY-r0.top;let lastY=e.clientY,raf=0;
+ const ph=document.createElement('div');ph.className='ph';ph.style.height=r0.height+'px';box.insertBefore(ph,row);
+ row.classList.add('drag');Object.assign(row.style,{position:'fixed',left:r0.left+'px',top:r0.top+'px',width:r0.width+'px',zIndex:50,margin:'0',transition:'none'});
  try{h.setPointerCapture(e.pointerId);}catch(_){}
- const mv=ev=>{ev.preventDefault();let bf=null;for(const r of [...box.children]){if(r===row)continue;const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){bf=r;break;}}
-  if(bf){if(row.nextSibling!==bf)box.insertBefore(row,bf);}else if(box.lastElementChild!==row)box.appendChild(row);
-  const y=ev.clientY,H=window.innerHeight;if(y<70)window.scrollBy(0,-10);else if(y>H-70)window.scrollBy(0,10);};
- const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);
-  const ord=[...box.children].map(k=>+k.dataset.j);row.classList.remove('drag');
-  if(ord.some((q,k)=>q!==k))R[i]=ord.map(k=>R[i][k]);draw();};
- h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);}
+ const items=()=>[...box.children].filter(x=>x!==row&&x!==ph);
+ const place=y=>{const c=y+r0.height/2;let bf=null;
+  for(const r of items()){const b=r.getBoundingClientRect();if(c<b.top+b.height/2){bf=r;break;}}
+  let n=ph.nextElementSibling;if(n===row)n=n.nextElementSibling;if(bf===n)return;
+  const tops=new Map(items().map(r=>[r,r.getBoundingClientRect().top]));
+  if(bf)box.insertBefore(ph,bf);else box.appendChild(ph);
+  items().forEach(r=>{const d=tops.get(r)-r.getBoundingClientRect().top;if(d){r.style.transition='none';r.style.transform='translateY('+d+'px)';void r.offsetHeight;r.style.transition='transform .18s ease';r.style.transform='';}});};
+ const loop=()=>{if(!dragging)return;const H=window.innerHeight;if(lastY<80)window.scrollBy(0,-10);else if(lastY>H-80)window.scrollBy(0,10);place(lastY-grab);raf=requestAnimationFrame(loop);};
+ const mv=ev=>{ev.preventDefault();lastY=ev.clientY;row.style.top=(lastY-grab)+'px';};
+ const up=()=>{cancelAnimationFrame(raf);h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);
+  const pr=ph.getBoundingClientRect();row.classList.remove('drag');row.style.transition='top .16s ease,left .16s ease,box-shadow .16s ease';row.style.top=pr.top+'px';row.style.left=pr.left+'px';
+  setTimeout(()=>{const ord=[];[...box.children].forEach(k=>{if(k===ph)ord.push(+row.dataset.j);else if(k!==row)ord.push(+k.dataset.j);});
+   ph.remove();dragging=false;if(ord.some((q,k)=>q!==k))R[i]=ord.map(k=>R[i][k]);draw();},170);};
+ h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);raf=requestAnimationFrame(loop);}
 $('ngay').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);autoFn();
 grpUi();draw();
 </script>
