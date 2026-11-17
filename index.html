@@ -268,17 +268,18 @@ async function exp(){
  ws.pageSetup={...cl(ts.pageSetup),paperSize:9,printArea:`A1:J${91+d2}`};
  const buf=await out.xlsx.writeBuffer();
  const fn=outName();
- if(await saveBlob(new Blob([buf],{type:XL}),fn+'.xlsx',m))m.textContent='Đã xuất file Excel.';
+ if(await saveBlob(new Blob([buf],{type:XL}),fn+'.xlsx',m,shareText()))m.textContent='Đã xuất file Excel.';
  }catch(e){m.textContent=e&&e.code=='declined'?'Anh đã hủy việc lưu file.':'Chưa xuất được: '+((e&&e.message)||e);}
 }
 let fnEdited=false;function defName(){const d=v('ngay').split('-'),dm=d.length==3?d[2]+'-'+d[1]:'',b=VU('bks').replace(/[^A-Z0-9-]+/g,'');return [b,dm].filter(Boolean).join('-')||'DU-TOAN';}
 function autoFn(){if(fnEdited)return;const s=defName();$('fn').value=s;$('fn2').value=s;}
 const ST=s=>String(s).normalize('NFC').split('').map(c=>c.normalize('NFD').replace(/[\u0300-\u036f]/g,'')).join('').replace(/đ/g,'d').replace(/Đ/g,'D').toUpperCase();
 const XL='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-async function saveBlob(blob,name,m){const file=new File([blob],name,{type:blob.type});let done=false;
- if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});done=true;}catch(e){if(e&&e.name=='AbortError'){m.textContent='Đã hủy.';return false;}}}
+async function saveBlob(blob,name,m,title){const file=new File([blob],name,{type:blob.type});let done=false;
+ if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:title||name});done=true;}catch(e){if(e&&e.name=='AbortError'){m.textContent='Đã hủy.';return false;}}}
  if(!done){const u=URL.createObjectURL(file),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}
  return true;}
+function shareText(){const b=VU('bks');return b?'Báo giá '+b:'Báo giá';}
 function outName(){return ((v('fn2')||v('fn')||defName()).replace(/[\\/:*?"<>|]+/g,'').replace(/\.(xlsx|pdf)$/i,'')||'Du-toan').toUpperCase();}
 function paperHtml(sg){const T=totals(),e=esc,G=$('grp').value!='0';let num=0,b='';
  S.forEach((s,i)=>{const L=R[i].filter(x=>x.n.trim()),k=s.indexOf(' (');if(!L.length)return;
@@ -319,7 +320,7 @@ async function expPdf(){const m={set textContent(t){$('msg').textContent=t;$('pm
   while(pos<H-1){let end=Math.min(pos+PH,H);if(end<H){const c=brs.filter(y=>y>pos+PH*.4&&y<=end);if(c.length)end=c[c.length-1];}
    const pc=document.createElement('canvas');pc.width=cv.width;pc.height=Math.max(1,Math.round((end-pos)*k));const x=pc.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,pc.width,pc.height);x.drawImage(cv,0,Math.round(pos*k),cv.width,pc.height,0,0,pc.width,pc.height);
    if(pg++)pdf.addPage();pdf.addImage(pc.toDataURL('image/jpeg',.92),'JPEG',8,8,194,(end-pos)*194/W);pos=end;}
-  if(await saveBlob(pdf.output('blob'),outName()+'.pdf',m))m.textContent='Đã xuất file PDF.';
+  if(await saveBlob(pdf.output('blob'),outName()+'.pdf',m,shareText()))m.textContent='Đã xuất file PDF.';
  }catch(e){m.textContent=e&&e.code=='declined'?'Đã hủy việc lưu file.':'Chưa tạo được PDF: '+((e&&e.message)||e);}
  finally{if(host)host.remove();}}
 let dragging=false;
